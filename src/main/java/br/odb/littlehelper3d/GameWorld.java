@@ -9,13 +9,15 @@ import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Iterator;
 
-import android.util.Log;
 import br.odb.gameapp.GameAssetManager;
 import br.odb.gameworld.Actor;
+import br.odb.gameworld.Direction;
 import br.odb.gameworld.exceptions.InvalidSlotException;
 import br.odb.liboldfart.sceneobjects.ObjMesh;
+import br.odb.libscene.Actor3D;
 import br.odb.libscene.Sector;
 import br.odb.libscene.World;
+import br.odb.libstrip.AbstractTriangleFactory;
 import br.odb.libstrip.MeshFactory;
 import br.odb.utils.FileServerDelegate;
 import br.odb.utils.Utils;
@@ -35,13 +37,18 @@ public class GameWorld extends World {
 	}
 
 	public void internalize(String path, String detail,
-			FileServerDelegate server, GameAssetManager gam ) {
+			FileServerDelegate server, GameAssetManager gam, MeshFactory factory ) {
 
 		super.internalize(path, true, server, null);
 
 		if (detail != null) {
 
-			detailMesh = gam.meshForName( detail );
+			try {
+				detailMesh = new ObjMesh( server.openAsInputStream( detail ), factory );
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 	}
 
@@ -206,21 +213,16 @@ public class GameWorld extends World {
 			sector.cachedParent = cachedSectors[ sector.getParent() ];
 //			sector.removeAllDoors();
 			
-			for ( int f = 0; f < 6; ++f ) {
+			for ( Direction f : Direction.values() ) {
 				
 				if ( sector.isMaster() && sector.getDoor( f ) != null )
 					sector.getDoor( f ).setDelegate( delegate );
 				
-				try {					
 					if ( sector.getLink( f ) != 0 )
-						sector.cachedNeighBours[ f ] = cachedSectors[ sector.getLink( f ) ];
+						sector.cachedNeighBours[ f.ordinal() ] = cachedSectors[ sector.getLink( f ) ];
 					else
-						sector.cachedNeighBours[ f ] = null;
+						sector.cachedNeighBours[ f.ordinal() ] = null;
 					
-				} catch (InvalidSlotException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}				
 			}
 		}
 		
@@ -236,29 +238,29 @@ public class GameWorld extends World {
 			if ( sector.isMaster() )
 				continue;
 						
-			for ( int f = 0; f < 6; ++f ) {
+			for ( Direction f : Direction.values() ) {
 
 				//edge sector
-				if ( sector.cachedNeighBours[ f ] == null ) {
+				if ( sector.cachedNeighBours[ f.ordinal() ] == null ) {
 				
-					if ( sector.cachedParent.meshWalls[ f ] != null ) {
+					if ( sector.cachedParent.meshWalls[ f.ordinal() ] != null ) {
 						
-						sector.meshWalls[ f ] = sector.cachedParent.meshWalls[ f ];
+						sector.meshWalls[ f.ordinal() ] = sector.cachedParent.meshWalls[ f.ordinal() ];
 					}
 					
 				} else {						
 					//edge sector (to this master )
-					if ( sector.cachedNeighBours[ f ].cachedParent != sector.cachedParent ) {
+					if ( sector.cachedNeighBours[ f.ordinal() ].cachedParent != sector.cachedParent ) {
 						
 						if ( sector.getDoor( f ) == null && sector.cachedParent.getDoor( f ) != null ) {
 							
-							sector.setDoorAt( f, sector.cachedNeighBours[ f ].getId() );
+							sector.setDoorAt( f, sector.cachedNeighBours[ f.ordinal() ].getId() );
 							thisDoor = (GameDoor) sector.getDoor( f ); 
 							sector.cachedParent.getDoor( f ).addSon( thisDoor );
 							
 							//the other side will never have a door...
-							sector.cachedNeighBours[ f ].setDoorAt( Utils.getOppositeDirection( f ), sector.getId() );							
-							otherDoor = (GameDoor) sector.cachedNeighBours[ f ].getDoor( Utils.getOppositeDirection( f ) );
+							sector.cachedNeighBours[ f.ordinal() ].setDoorAt( Direction.getOpositeFor( f ), sector.getId() );							
+							otherDoor = (GameDoor) sector.cachedNeighBours[ f.ordinal() ].getDoor( Direction.getOpositeFor( f ) );
 							thisDoor.setLinkedDoor( otherDoor );
 							otherDoor.setLinkedDoor( thisDoor );
 							sector.cachedParent.getDoor( f ).addSon( otherDoor );
@@ -269,7 +271,7 @@ public class GameWorld extends World {
 			
 			sector.silentlyCloseAllDoors();
 		}		
-		Log.d("BZK3", "doors consolidated");
+		System.out.println("BZK3:doors consolidated");
 	}
 
 	final public int getTotalSectors() {
@@ -338,30 +340,30 @@ public class GameWorld extends World {
 	// }
 
 	public void makeDoorAt(FileServerDelegate fileServer, Sector origin,
-			int face, int sectorId, String decalName) {
+			Direction face, int sectorId, String decalName, AbstractTriangleFactory factory) {
 
 		super.makeDoorAt(origin, face, sectorId, decalName);
 
 		if (origin instanceof GameSector && decalName != null
 				&& decalName.length() > 0)
-			((GameSector) origin).setDecalAt(fileServer, face, decalName);
+			((GameSector) origin).setDecalAt(fileServer, face, decalName, factory);
 	}
 
 	@Override
-	public Actor makeActorAt(int sector, int candelas) {
-		Log.d("bzk3", "gameactor created");
-		AndroidGameActor actor = new AndroidGameActor();
+	public Actor3D makeActorAt(int sector, int candelas) {
+		System.out.println( "bzk3:gameactor created" );
+		GameActor actor = new GameActor();
 		actor.setCurrentSector(sector);
 		actor.setEmissiveLightningIntensity(candelas);
 		return actor;
 	}
 
 	public void applyDecalTo(FileServerDelegate fileServer, Sector origin,
-			int face, String decalName) {
+			Direction face, String decalName, AbstractTriangleFactory factory ) {
 
 		if (origin instanceof GameSector && decalName != null
 				&& decalName.length() > 0)
-			((GameSector) origin).setDecalAt(fileServer, face, decalName);
+			((GameSector) origin).setDecalAt(fileServer, face, decalName, factory );
 	}
 
 	@Override
@@ -381,7 +383,7 @@ public class GameWorld extends World {
 		os.write(getTotalActors());
 
 		for (int c = 0; c < this.getTotalActors(); ++c) {
-			((AndroidGameActor) getActor(c)).writeSnapshot(os);
+			((GameActor) getActor(c)).writeSnapshot(os);
 		}
 	}
 
@@ -390,12 +392,12 @@ public class GameWorld extends World {
 		byte total = (byte) is.read();
 		int myTotal = getTotalActors();
 
-		AndroidGameActor actor;
+		GameActor actor;
 
 		for (int c = 0; c < total; ++c) {
 
 			if (c < myTotal) {
-				actor = (AndroidGameActor) getActor(c);
+				actor = (GameActor) getActor(c);
 				actor.loadSnapshot(is);
 			}
 		}
@@ -420,7 +422,7 @@ public class GameWorld extends World {
 
 	public void checkpointActors() {
 
-		for (Actor actor : actorList) {
+		for (Actor3D actor : actorList) {
 			actor.checkpointPosition();
 		}
 

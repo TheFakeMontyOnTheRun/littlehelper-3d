@@ -9,6 +9,8 @@ import java.util.ArrayList;
 
 import br.odb.gameapp.GameAudioManager;
 import br.odb.gameworld.Actor;
+import br.odb.gameworld.Direction;
+import br.odb.libscene.Actor3D;
 import br.odb.libscene.ActorConstants;
 import br.odb.libscene.Constants;
 import br.odb.libscene.Sector;
@@ -110,7 +112,7 @@ public class GameEngine implements Runnable {
 	public void run() {
 
 		ArrayList< GameActor> toBeAdded = new ArrayList< GameActor>();
-		Actor sons;
+		Actor3D sons;
 		boolean actorHasChangedSector;
 		boolean needsToRefreshLightning = false;
 		GameSector originalSector;
@@ -141,7 +143,7 @@ public class GameEngine implements Runnable {
 				toBeAdded.clear();
 				int count = world.getTotalActors();
 				
-				for ( Actor baseActor: world.getActorList() ) {
+				for ( Actor3D baseActor: world.getActorList() ) {
 
 					actor = ( GameActor) baseActor;
 
@@ -211,7 +213,7 @@ public class GameEngine implements Runnable {
 		
 		if ( world != null ) {
 			
-			for ( Actor toBeKilled : world.getActorList() ) {
+			for ( Actor3D toBeKilled : world.getActorList() ) {
 				
 				if (!toBeKilled.isAlive())
 					continue;
@@ -308,13 +310,14 @@ public class GameEngine implements Runnable {
 		this.delegate = delegate;
 		delegate.setGameEngine( this );
 		
-		for ( Actor actor : world.getActorList() ) {
+		for ( Actor3D actor : world.getActorList() ) {
 			( ( GameActor ) actor ).setGameDelegate( delegate );
 		}
 		
 		for ( Sector sector : world ) {
 			GameSector s = ( ( GameSector) sector );
-			for ( int c = 0; c < 6; ++c ) {
+			for ( Direction c : Direction.values() ) {
+
 				if ( s.getDoor( c ) != null ) {
 					s.getDoor( c ).setDelegate( delegate );
 				}

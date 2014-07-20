@@ -1,9 +1,10 @@
 package br.odb.littlehelper3d;
 
-import sun.rmi.runtime.Log;
+import br.odb.gameapp.GameAssetManager;
 import br.odb.gameapp.PositionalMediaPlayer;
-import br.odb.gameworld.Actor;
+import br.odb.gameworld.Direction;
 import br.odb.gameworld.exceptions.InvalidSlotException;
+import br.odb.libscene.Actor3D;
 import br.odb.libscene.Constants;
 import br.odb.libscene.Door;
 import br.odb.libscene.InvalidSectorQuery;
@@ -11,6 +12,7 @@ import br.odb.libscene.Sector;
 import br.odb.libstrip.AbstractSquare;
 import br.odb.libstrip.AbstractTriangle;
 import br.odb.libstrip.AbstractTriangleFactory;
+import br.odb.libstrip.IndexedSetFace;
 import br.odb.libstrip.Mesh;
 import br.odb.libstrip.MeshFactory;
 import br.odb.utils.FileServerDelegate;
@@ -46,8 +48,7 @@ public class GameSector extends Sector {
 
 	public void closeAllDoors() {
 		Door door;
-
-		for (int c = 0; c < 6; ++c) {
+		for ( Direction c : Direction.values() ) {
 
 			door = getDoor(c);
 
@@ -135,7 +136,7 @@ public class GameSector extends Sector {
 	}
 
 	@Override
-	public void onSectorEnteredBy(GameActor actor) {
+	public void onSectorEnteredBy(Actor3D actor) {
 		super.onSectorEnteredBy(actor);
 		
 //		openAllDoors();
@@ -155,8 +156,7 @@ public class GameSector extends Sector {
 	private void openAllDoorsAfter( int delay ) {
 		
 		GameDoor door;
-
-		for (int c = 0; c < 6; ++c) {
+		for ( Direction c : Direction.values() ) {
 
 			door = getDoor(c);
 
@@ -167,7 +167,7 @@ public class GameSector extends Sector {
 	}
 
 	// ------------------------------------------------------------------------------------------------------------
-	public void onSectorLeftBy(GameActor actor) {
+	public void onSectorLeftBy(Actor3D actor) {
 		super.onSectorLeftBy(actor);
 		
 		closeAllDoorsAfter( 10000 );
@@ -176,7 +176,7 @@ public class GameSector extends Sector {
 	private void closeAllDoorsAfter(int delay) {
 		GameDoor door;
 
-		for (int c = 0; c < 6; ++c) {
+		for ( Direction c : Direction.values() ) {
 
 			door = getDoor(c);
 
@@ -207,33 +207,29 @@ public class GameSector extends Sector {
 //		}
 	}
 
-	public void setDoorAt(int slot, int sector, FileServerDelegate delegate, PositionalMediaPlayer openSound, PositionalMediaPlayer closeSound ) {
+	public void setDoorAt(Direction slot, int sector, FileServerDelegate delegate, PositionalMediaPlayer openSound, PositionalMediaPlayer closeSound, GameAssetManager gam ) {
 		
 		doorCount++;
-		doors[slot] = new GameDoor(sector, getCenterForEdge( slot ), openSound, closeSound, null );
+		doors[slot.ordinal()] = new GameDoor(sector, getCenterForEdge( slot ), openSound, closeSound, null, gam );
 	}
 
-	public void setDoorAt(FileServerDelegate fileServer, int slot, int sector,
-			String decalName, GameDelegate delegate, PositionalMediaPlayer openSound, PositionalMediaPlayer closeSound ) {
+	public void setDoorAt(FileServerDelegate fileServer, Direction slot, int sector,
+			String decalName, GameDelegate delegate, PositionalMediaPlayer openSound, PositionalMediaPlayer closeSound, GameAssetManager gam, AbstractTriangleFactory factory ) {
 		
 		doorCount++;
-		doors[slot] = new GameDoor(sector, getCenterForEdge( slot ), openSound, closeSound, delegate );
-		setDecalAt(fileServer, slot, decalName);
+		doors[slot.ordinal()] = new GameDoor(sector, getCenterForEdge( slot ), openSound, closeSound, delegate, gam );
+		setDecalAt(fileServer, slot, decalName, factory);
 	}
 
-	
-	public int getLink(int i) throws InvalidSlotException {
-		return super.getLink( i );
-	}
-	
+		
 	@Override
-	public GameDoor getDoor(int d) {
+	public GameDoor getDoor(Direction d) {
 	
 		return (GameDoor) super.getDoor( d );
 	}
 	
 	// ------------------------------------------------------------------------------------------------------------
-	public void setLink(int s, int i0, String token) {
+	public void setLink(Direction s, int i0, String token) {
 		super.setLink(s, i0);
 
 		if (i0 == Constants.NO_LINK)
@@ -245,12 +241,11 @@ public class GameSector extends Sector {
 	public void setLinks(int l0, int l1, int l2, int l3, int l4, int l5) {
 		super.setLinks(l0, l1, l2, l3, l4, l5);
 		visibleFaces = 0;
-		for (int c = 0; c < 6; ++c)
-			try {
+		
+		for ( Direction c : Direction.values() ) {
+
 				if (getLink(c) == Constants.NO_LINK)
 					++visibleFaces;
-			} catch (InvalidSlotException e) {
-				e.printStackTrace();
 			}
 
 	}
@@ -267,39 +262,40 @@ public class GameSector extends Sector {
 		}
 	}
 
-	public void setDecalAt(FileServerDelegate fileServer, int face,
-			String decalName) {
+	public void setDecalAt(FileServerDelegate fileServer, Direction face,
+			String decalName, AbstractTriangleFactory factory ) {
 
 		String decalFilename = decalName;
 		
-		Decal decal = new Decal(fileServer, decalName, decalFilename, 800.0f, 480.0f );
+		Decal decal = new Decal(fileServer, decalName, decalFilename, 800.0f, 480.0f, factory );
 		
-		if (doors[face] != null) {			
-			doors[face].setMesh( applyToFace(face, decal, 4.0f ) );
-			doors[face].getMesh().addFacesFrom( applyToFace(face, decal, -4.0f ) );
+		if (doors[face.ordinal()] != null) {			
+			doors[face.ordinal()].setMesh( applyToFace(face, decal, 4.0f, factory ) );
+			doors[face.ordinal()].getMesh().addFacesFrom( applyToFace(face, decal, -4.0f, factory ) );
 		} else
-			this.meshWalls[face] = applyToFace(face, decal, 1.0f );
+			this.meshWalls[face.ordinal()] = applyToFace(face, decal, 1.0f, factory );
 	}
 
-	private Mesh applyToFace(int face, Decal decal, float scale ) {
+	private Mesh applyToFace(Direction face, Decal decal, float scale, AbstractTriangleFactory factory ) {
 
 		Decal toReturn = new Decal();
 
-		for (int c = 0; c < decal.faces.size(); ++c) {
-			toReturn.addFace(this.applyToFace(face,
-					(AbstractTriangle) decal.faces.get(c), scale ) );
+		for ( IndexedSetFace isf : decal.faces ) {
+			toReturn.addFace(
+					 applyToFace(face, 	(AbstractTriangle) isf, scale, factory )
+					);	
 		}
-
+		
 		return toReturn;
 	}
 	
 
 
-	public AbstractTriangle applyToFace(int faceNum, AbstractTriangle face, float scale ) {
-		return applyToFace(faceNum, face, 0.0f, scale );
+	public AbstractTriangle applyToFace(Direction faceNum, AbstractTriangle face, float scale, AbstractTriangleFactory factory ) {
+		return applyToFace(faceNum, face, 0.0f, scale, factory );
 	}
 
-	private AbstractTriangle applyToFace(int faceNum, AbstractTriangle face,
+	private AbstractTriangle applyToFace(Direction faceNum, AbstractTriangle face,
 			float delta, float scale, AbstractTriangleFactory factory ) {
 
 		AbstractTriangle toReturn = null;
@@ -326,86 +322,86 @@ public class GameSector extends Sector {
 
 		switch (faceNum) {
 
-		case Constants.FACE_S: {
+		case S: {
 
-			x0 = x + (face.x0) * dx;
-			y0 = (dy / 2.0f) + y + (face.y0) * dy;
-			z0 = z + (face.z0 * scale ) + delta + (dz / 2);
-			x1 = x + (face.x1) * dx;
-			y1 = (dy / 2.0f) + y + (face.y1) * dy;
-			z1 = z + (face.z1 * scale ) + delta + (dz / 2);
-			x2 = x + (face.x2) * dx;
-			y2 = (dy / 2.0f) + y + (face.y2) * dy;
-			z2 = z + (face.z2 * scale ) + delta + (dz / 2);
+			x0 = x + (face.getVertex( 0 ).x ) * dx;
+			y0 = (dy / 2.0f) + y + (face.getVertex( 0 ).y) * dy;
+			z0 = z + (face.getVertex( 0 ).z * scale ) + delta + (dz / 2);
+			x1 = x + (face.getVertex( 1 ).x) * dx;
+			y1 = (dy / 2.0f) + y + (face.getVertex( 1 ).y) * dy;
+			z1 = z + (face.getVertex( 1 ).z * scale ) + delta + (dz / 2);
+			x2 = x + (face.getVertex( 2 ).x) * dx;
+			y2 = (dy / 2.0f) + y + (face.getVertex( 2 ).y) * dy;
+			z2 = z + (face.getVertex( 2 ).z * scale ) + delta + (dz / 2);
 		}
 			break;
 
-		case Constants.FACE_N: {
+		case N: {
 
-			x0 = x + (face.x0) * dx;
-			y0 = (dy / 2.0f) + y + (face.y0) * dy;
-			z0 = z - (face.z0  * scale / 2.0f ) - delta - (dz / 2);
-			x1 = x + (face.x1) * dx;
-			y1 = (dy / 2.0f) + y + (face.y1) * dy;
-			z1 = z - (face.z1  * scale / 2.0f ) - delta - (dz / 2);
-			x2 = x + (face.x2) * dx;
-			y2 = (dy / 2.0f) + y + (face.y2) * dy;
-			z2 = z - (face.z2  * scale / 2.0f ) - delta - (dz / 2);
+			x0 = x + face.getVertex( 0 ).x * dx;
+			y0 = (dy / 2.0f) + y + (face.getVertex( 0 ).y) * dy;
+			z0 = z - (face.getVertex( 0 ).z  * scale / 2.0f ) - delta - (dz / 2);
+			x1 = x + (face.getVertex( 1 ).x) * dx;
+			y1 = (dy / 2.0f) + y + (face.getVertex( 1 ).y) * dy;
+			z1 = z - (face.getVertex( 1 ).z  * scale / 2.0f ) - delta - (dz / 2);
+			x2 = x + (face.getVertex( 2 ).x) * dx;
+			y2 = (dy / 2.0f) + y + (face.getVertex( 2 ).y) * dy;
+			z2 = z - (face.getVertex( 2 ).z  * scale / 2.0f ) - delta - (dz / 2);
 		}
 			break;
 
-		case Constants.FACE_E: {
+		case E: {
 
-			x0 = x + (face.z0 * scale ) - delta + (dx / 2);
-			y0 = (dy / 2.0f) + y + (face.y0 * dy);
-			z0 = z + (face.x0 * dz);
-			x1 = x + (face.z1 * scale ) - delta + (dx / 2);
-			y1 = (dy / 2.0f) + y + (face.y1 * dy);
-			z1 = z + (face.x1 * dz);
-			x2 = x + (face.z2 * scale ) - delta + (dx / 2);
-			y2 = (dy / 2.0f) + y + (face.y2 * dy);
-			z2 = z + (face.x2 * dz);
+			x0 = x + (face.getVertex( 0 ).z * scale ) - delta + (dx / 2);
+			y0 = (dy / 2.0f) + y + (face.getVertex( 0 ).y * dy);
+			z0 = z + (face.getVertex( 0 ).x * dz);
+			x1 = x + (face.getVertex( 1 ).z * scale ) - delta + (dx / 2);
+			y1 = (dy / 2.0f) + y + (face.getVertex( 1 ).y * dy);
+			z1 = z + (face.getVertex( 1 ).x * dz);
+			x2 = x + (face.getVertex( 2 ).z * scale ) - delta + (dx / 2);
+			y2 = (dy / 2.0f) + y + (face.getVertex( 2 ).y * dy);
+			z2 = z + (face.getVertex( 2 ).x * dz);
 		}
 			break;
 
-		case Constants.FACE_W: {
+		case W: {
 
-			x0 = x - (face.z0 * scale ) + delta - (dx / 2);
-			y0 = (dy / 2.0f) + y + (face.y0 * dy);
-			z0 = z + (face.x0 * dz);
-			x1 = x - (face.z1 * scale ) + delta - (dx / 2);
-			y1 = (dy / 2.0f) + y + (face.y1 * dy);
-			z1 = z + (face.x1 * dz);
-			x2 = x - (face.z2 * scale ) + delta - (dx / 2);
-			y2 = (dy / 2.0f) + y + (face.y2 * dy);
-			z2 = z + (face.x2 * dz);
+			x0 = x - (face.getVertex( 0 ).z * scale ) + delta - (dx / 2);
+			y0 = (dy / 2.0f) + y + (face.getVertex( 0 ).y * dy);
+			z0 = z + (face.getVertex( 0 ).x * dz);
+			x1 = x - (face.getVertex( 1 ).z * scale ) + delta - (dx / 2);
+			y1 = (dy / 2.0f) + y + (face.getVertex( 1 ).y * dy);
+			z1 = z + (face.getVertex( 1 ).x * dz);
+			x2 = x - (face.getVertex( 2 ).z * scale ) + delta - (dx / 2);
+			y2 = (dy / 2.0f) + y + (face.getVertex( 2 ).y * dy);
+			z2 = z + (face.getVertex( 2 ).x * dz);
 		}
 			break;
 
-		case Constants.FACE_FLOOR: {
+		case FLOOR: {
 
-			x0 = x + (face.x0) * dx;
-			y0 = y - (face.z0 * scale ) + delta;// + ( face.z0 );
-			z0 = z + (face.y0) * dz;
-			x1 = x + (face.x1) * dx;
-			y1 = y - (face.z1 * scale ) + delta;// + ( face.z1 );
-			z1 = z + (face.y1) * dz;
-			x2 = x + (face.x2) * dx;
-			y2 = y - (face.z2 * scale ) + delta;// + ( face.z2 );
-			z2 = z + (face.y2) * dz;
+			x0 = x + (face.getVertex( 0 ).x) * dx;
+			y0 = y - (face.getVertex( 0 ).z * scale ) + delta;// + ( face.z0 );
+			z0 = z + (face.getVertex( 0 ).y) * dz;
+			x1 = x + (face.getVertex( 1 ).x) * dx;
+			y1 = y - (face.getVertex( 1 ).z * scale ) + delta;// + ( face.z1 );
+			z1 = z + (face.getVertex( 1 ).y ) * dz;
+			x2 = x + (face.getVertex( 2 ).x) * dx;
+			y2 = y - (face.getVertex( 2 ).z * scale ) + delta;// + ( face.z2 );
+			z2 = z + (face.getVertex( 2 ).y ) * dz;
 		}
 			break;
 
-		case Constants.FACE_CEILING: {
-			x0 = x + (face.x0) * dx;
-			y0 = y + (face.z0 * scale ) + dy + delta;
-			z0 = z + (face.y0) * dz;
-			x1 = x + (face.x1) * dx;
-			y1 = y + (face.z1 * scale ) + dy + delta;
-			z1 = z + (face.y1) * dz;
-			x2 = x + (face.x2) * dx;
-			y2 = y + (face.z2 * scale ) + dy + delta;
-			z2 = z + (face.y2) * dz;
+		case CEILING: {
+			x0 = x + (face.getVertex( 0 ).x) * dx;
+			y0 = y + (face.getVertex( 0 ).z * scale ) + dy + delta;
+			z0 = z + (face.getVertex( 0 ).y ) * dz;
+			x1 = x + (face.getVertex( 1 ).x) * dx;
+			y1 = y + (face.getVertex( 1 ).z * scale ) + dy + delta;
+			z1 = z + (face.getVertex( 1 ).y ) * dz;
+			x2 = x + (face.getVertex( 2 ).x) * dx;
+			y2 = y + (face.getVertex( 2 ).z * scale ) + dy + delta;
+			z2 = z + (face.getVertex( 2 ).y ) * dz;
 		}
 			break;
 		}

@@ -2,7 +2,6 @@
  * 
  */
 package br.odb.littlehelper3d;
-
 import java.io.DataInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -14,8 +13,10 @@ import br.odb.libstrip.AbstractTriangle;
 import br.odb.libstrip.AbstractTriangleFactory;
 import br.odb.libstrip.Mesh;
 import br.odb.libstrip.MeshFactory;
+import br.odb.utils.Color;
 import br.odb.utils.FileServerDelegate;
 import br.odb.utils.math.Vec3;
+
 
 /**
  * @author monty
@@ -92,7 +93,8 @@ public class Decal extends Mesh {
 		
 		DataInputStream dis;
 		dis = new DataInputStream( is );
-		
+		float x0, y0, z0, x1, y1, z1, x2, y2, z2;
+		int r, g, b, a;
 		HashMap< Byte, Float > xRoundings = new HashMap< Byte, Float >();
 		HashMap< Byte, Float > yRoundings = new HashMap< Byte, Float >();
 		HashMap< Byte, Float > zRoundings = new HashMap< Byte, Float >();
@@ -105,7 +107,7 @@ public class Decal extends Mesh {
 		AbstractTriangle t;
 		int header;
 		int majorPolys;
-		
+		Color color = null;
 		header = -1;
 		
 		if ( header == -1 ) {
@@ -123,26 +125,28 @@ public class Decal extends Mesh {
 					if ( edge[ 8 ] == Byte.MIN_VALUE )
 						continue;
 					
-					t = factory.makeTrig(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10)  
+					  
 							
-					t.a = (edge[0] + (-Byte.MIN_VALUE));
-					t.r = (edge[1] + (-Byte.MIN_VALUE));
-					t.g = (edge[2] + (-Byte.MIN_VALUE));
-					t.b = (edge[3] + (-Byte.MIN_VALUE));
+					a = (edge[0] + (-Byte.MIN_VALUE));
+					r = (edge[1] + (-Byte.MIN_VALUE));
+					g = (edge[2] + (-Byte.MIN_VALUE));
+					b = (edge[3] + (-Byte.MIN_VALUE));
 				
 					
-					t.x0 = normalizeX( edge[4], xRoundings, screenWidth, screenHeight );
-					t.y0 = normalizeY( edge[5], yRoundings, screenWidth, screenHeight );
+					x0 = normalizeX( edge[4], xRoundings, screenWidth, screenHeight );
+					y0 = normalizeY( edge[5], yRoundings, screenWidth, screenHeight );
 					
-					t.x1 = normalizeX( edge[6], xRoundings, screenWidth, screenHeight );
-					t.y1 = normalizeY( edge[7], yRoundings, screenWidth, screenHeight );
+					x1 = normalizeX( edge[6], xRoundings, screenWidth, screenHeight );
+					y1 = normalizeY( edge[7], yRoundings, screenWidth, screenHeight );
 					
-					t.x2 = normalizeX( edge[4], xRoundings, screenWidth, screenHeight );
-					t.y2 = normalizeY( edge[5], yRoundings, screenWidth, screenHeight );
+					x2 = normalizeX( edge[4], xRoundings, screenWidth, screenHeight );
+					y2 = normalizeY( edge[5], yRoundings, screenWidth, screenHeight );
 					
-					t.z0 = normalizeZ( Byte.MIN_VALUE, zRoundings );
-					t.z1 = normalizeZ( Byte.MIN_VALUE, zRoundings );
-					t.z2 = normalizeZ( edge[ 8 ], zRoundings );
+					z0 = normalizeZ( Byte.MIN_VALUE, zRoundings );
+					z1 = normalizeZ( Byte.MIN_VALUE, zRoundings );
+					z2 = normalizeZ( edge[ 8 ], zRoundings );
+					color = new Color( r, g, b, a );
+					t = factory.makeTrig( x0, y0, z0, x1, y1, z1, x2, y2, z2, color.getARGBColor(), MeshFactory.DEFAULT_LIGHT_VECTOR.normalized() );
 					
 					float lightFactor;
 					Vec3 normal;
@@ -152,44 +156,43 @@ public class Decal extends Mesh {
 					lightFactor = 0.8f + ( normal.dotProduct( MeshFactory.DEFAULT_LIGHT_VECTOR.normalized() ) * 0.2f );
 					
 					
-					t.r *= lightFactor;
-					t.g *= lightFactor;
-					t.b *= lightFactor;
-					t.a *= lightFactor;						
-					
-					t.flushToGLES();					
+					color.r *= lightFactor;
+					color.g *= lightFactor;
+					color.b *= lightFactor;
+					color.a *= lightFactor;						
+					t.flush();					
 					scratch.add( t );
 					
-					t = new GLES1Triangle();
-					t.a = (edge[0] + (-Byte.MIN_VALUE));
-					t.r = (edge[1] + (-Byte.MIN_VALUE));
-					t.g = (edge[2] + (-Byte.MIN_VALUE));
-					t.b = (edge[3] + (-Byte.MIN_VALUE));
 					
-					t.x0 = normalizeX( edge[6], xRoundings, screenWidth, screenHeight );
-					t.y0 = normalizeY( edge[7], yRoundings, screenWidth, screenHeight );
+					a = (edge[0] + (-Byte.MIN_VALUE));
+					r = (edge[1] + (-Byte.MIN_VALUE));
+					g = (edge[2] + (-Byte.MIN_VALUE));
+					b = (edge[3] + (-Byte.MIN_VALUE));
 					
-					t.x1 = normalizeX( edge[6], xRoundings, screenWidth, screenHeight );
-					t.y1 = normalizeY( edge[7], yRoundings, screenWidth, screenHeight );
+					x0 = normalizeX( edge[6], xRoundings, screenWidth, screenHeight );
+					y0 = normalizeY( edge[7], yRoundings, screenWidth, screenHeight );
 					
-					t.x2 = normalizeX( edge[4], xRoundings, screenWidth, screenHeight );
-					t.y2 = normalizeY( edge[5], yRoundings, screenWidth, screenHeight );
+					x1 = normalizeX( edge[6], xRoundings, screenWidth, screenHeight );
+					y1 = normalizeY( edge[7], yRoundings, screenWidth, screenHeight );
 					
-					t.z0 = normalizeZ( Byte.MIN_VALUE, zRoundings );
-					t.z1 = normalizeZ( edge[ 8 ], zRoundings );
-					t.z2 = normalizeZ( edge[ 8 ], zRoundings );
+					x2 = normalizeX( edge[4], xRoundings, screenWidth, screenHeight );
+					y2 = normalizeY( edge[5], yRoundings, screenWidth, screenHeight );
+					
+					z0 = normalizeZ( Byte.MIN_VALUE, zRoundings );
+					z1 = normalizeZ( edge[ 8 ], zRoundings );
+					z2 = normalizeZ( edge[ 8 ], zRoundings );
 					
 					
 					normal = t.makeNormal().normalized();
 					lightFactor = 0.8f + ( normal.dotProduct( MeshFactory.DEFAULT_LIGHT_VECTOR.normalized() ) * 0.2f );
 					
 					
-					t.r *= lightFactor;
-					t.g *= lightFactor;
-					t.b *= lightFactor;
-					t.a *= lightFactor;							
-					
-					t.flushToGLES();	
+					r *= lightFactor;
+					g *= lightFactor;
+					b *= lightFactor;
+					a *= lightFactor;							
+					t = factory.makeTrig( x0, y0, z0, x1, y1, z1, x2, y2, z2, color.getARGBColor(), MeshFactory.DEFAULT_LIGHT_VECTOR.normalized() );
+					t.flush();	
 					scratch.add( t );
 				}
 			}
@@ -204,32 +207,30 @@ public class Decal extends Mesh {
 				
 				is.read(bytes);
 				
-				t = new GLES1Triangle();
+				a = (bytes[0] + (-Byte.MIN_VALUE));
+				r = (bytes[1] + (-Byte.MIN_VALUE));
+				g = (bytes[2] + (-Byte.MIN_VALUE));
+				b = (bytes[3] + (-Byte.MIN_VALUE));
 				
-				t.a = (bytes[0] + (-Byte.MIN_VALUE));
-				t.r = (bytes[1] + (-Byte.MIN_VALUE));
-				t.g = (bytes[2] + (-Byte.MIN_VALUE));
-				t.b = (bytes[3] + (-Byte.MIN_VALUE));
+				x0 = normalizeX( bytes[4], xRoundings, screenWidth, screenHeight );
+				y0 = normalizeY( bytes[5], yRoundings, screenWidth, screenHeight );
 				
-				t.x0 = normalizeX( bytes[4], xRoundings, screenWidth, screenHeight );
-				t.y0 = normalizeY( bytes[5], yRoundings, screenWidth, screenHeight );
+				x1 = normalizeX( bytes[6], xRoundings, screenWidth, screenHeight );
+				y1 = normalizeY( bytes[7], yRoundings, screenWidth, screenHeight );
 				
-				t.x1 = normalizeX( bytes[6], xRoundings, screenWidth, screenHeight );
-				t.y1 = normalizeY( bytes[7], yRoundings, screenWidth, screenHeight );
-				
-				t.x2 = normalizeX( bytes[8], xRoundings, screenWidth, screenHeight );
-				t.y2 = normalizeY( bytes[9], yRoundings, screenWidth, screenHeight );
+				x2 = normalizeX( bytes[8], xRoundings, screenWidth, screenHeight );
+				y2 = normalizeY( bytes[9], yRoundings, screenWidth, screenHeight );
 				
 //				if ( bytes[ 10 ] > Byte.MIN_VALUE ) {
 					
-				t.z0 = normalizeZ( bytes[ 10 ], zRoundings );
-				t.z1 = normalizeZ( bytes[ 10 ], zRoundings );
-				t.z2 = normalizeZ( bytes[ 10 ], zRoundings );
+				z0 = normalizeZ( bytes[ 10 ], zRoundings );
+				z1 = normalizeZ( bytes[ 10 ], zRoundings );
+				z2 = normalizeZ( bytes[ 10 ], zRoundings );
 //				} else {
 //					t.flatten( offset );
 //				}
-				
-				t.flushToGLES();
+				t = factory.makeTrig( x0, y0, z0, x1, y1, z1, x2, y2, z2, color.getARGBColor(), MeshFactory.DEFAULT_LIGHT_VECTOR.normalized() );
+				t.flush();
 				
 				
 				scratch.add( t );
@@ -239,20 +240,20 @@ public class Decal extends Mesh {
 		
 		System.out.println( "got " + entries + " polygons" );
 		
-		toReturn = new GLES1Triangle[ scratch.size() ];
+		toReturn = new AbstractTriangle[ scratch.size() ];
 		toReturn = scratch.toArray( toReturn );
 		
 		return toReturn;
 	}
 	
-	public Decal( FileServerDelegate fileServer, String decalName, String decalFilename, float screenWidth, float screenHeight ) {
+	public Decal( FileServerDelegate fileServer, String decalName, String decalFilename, float screenWidth, float screenHeight, AbstractTriangleFactory factory ) {
 		
 		super( decalFilename );
 		
 		try {			
 			InputStream is = fileServer.openAsInputStream( decalFilename );
 			
-			AbstractTriangle[] trigs = loadFrom( is, 0.0f, screenWidth, screenHeight );
+			AbstractTriangle[] trigs = loadFrom( is, 0.0f, screenWidth, screenHeight, factory );
 			
 			for ( int c = 0; c < trigs.length; ++c )
 				addFace( trigs[ c ] );

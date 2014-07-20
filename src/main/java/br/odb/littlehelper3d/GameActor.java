@@ -1,10 +1,21 @@
 package br.odb.littlehelper3d;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.ArrayList;
+
 import br.odb.gameapp.GameAudioListener;
 import br.odb.gameapp.PositionalMediaPlayer;
 import br.odb.gameworld.Actor;
 import br.odb.liboldfart.sceneobjects.ObjMesh;
+import br.odb.libscene.Actor3D;
 import br.odb.libscene.ActorConstants;
+import br.odb.libscene.SceneObject3D;
+import br.odb.libscene.Sector;
+import br.odb.utils.Utils;
 import br.odb.utils.math.Vec3;
 
 
@@ -12,7 +23,7 @@ import br.odb.utils.math.Vec3;
  * 
  * @author daniel
  */
-public class GameActor extends Actor implements GameAudioListener {
+public class GameActor extends Actor3D implements GameAudioListener {
 	// ------------------------------------------------------------------------------------------------------------
 	/**
 	 * 
@@ -96,7 +107,7 @@ public class GameActor extends Actor implements GameAudioListener {
 	 * 
 	 */
 	@Override
-	public Actor generateCopy() {
+	public Actor3D generateCopy() {
 		return new GameActor(this);
 	}
 	// ------------------------------------------------------------------------------------------------------------
